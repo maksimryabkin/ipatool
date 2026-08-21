@@ -6,4 +6,5 @@ type Request struct {
 	Headers        map[string]string
 	Payload        Payload
 	ResponseFormat ResponseFormat
+	SignAction     bool
 }

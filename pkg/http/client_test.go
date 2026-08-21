@@ -1,7 +1,9 @@
 package http
 
 import (
+	"encoding/base64"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -67,6 +69,18 @@ var _ = Describe("Client", Ordered, func() {
 		Expect(res).ToNot(BeNil())
 	})
 
+	It("returns an error when action signing is requested without a signer", func() {
+		sut := NewClient[xmlResult](Args{})
+
+		_, err := sut.Send(Request{
+			URL:        srv.URL,
+			Method:     MethodPOST,
+			SignAction: true,
+		})
+
+		Expect(err).To(MatchError("failed to sign Apple action: signer is not configured"))
+	})
+
 	When("payload decodes successfully", func() {
 		When("cookie jar fails to save", func() {
 			BeforeEach(func() {
@@ -93,6 +107,50 @@ var _ = Describe("Client", Ordered, func() {
 				mockCookieJar.EXPECT().
 					Save().
 					Return(nil)
+			})
+
+			It("signs the exact payload and sends the signature header", func() {
+				payload := &XMLPayload{
+					Content: map[string]interface{}{
+						"appleId": "test@example.com",
+					},
+				}
+				payloadData, err := payload.data()
+				Expect(err).ToNot(HaveOccurred())
+
+				signature := []byte("test-action-signature")
+				mockHandler = func(w http.ResponseWriter, r *http.Request) {
+					defer GinkgoRecover()
+
+					requestBody, err := io.ReadAll(r.Body)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(requestBody).To(Equal(payloadData))
+					Expect(r.Header.Get(HeaderAppleActionSignature)).To(Equal(base64.StdEncoding.EncodeToString(signature)))
+
+					_, err = w.Write([]byte("<dict><key>foo</key><string>bar</string></dict>"))
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+				sut := NewClient[xmlResult](Args{
+					CookieJar: mockCookieJar,
+					ActionSigner: func(data []byte) ([]byte, error) {
+						Expect(data).To(Equal(payloadData))
+						return signature, nil
+					},
+				})
+				res, err := sut.Send(Request{
+					URL:            srv.URL,
+					Method:         MethodPOST,
+					Payload:        payload,
+					ResponseFormat: ResponseFormatXML,
+					SignAction:     true,
+					Headers: map[string]string{
+						HeaderAppleActionSignature: "stale-signature",
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.Data.Foo).To(Equal("bar"))
 			})
 
 			It("decodes JSON response", func() {

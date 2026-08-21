@@ -73,6 +73,9 @@ var _ = Describe("AppStore (Login)", func() {
 			BeforeEach(func() {
 				mockClient.EXPECT().
 					Send(gomock.Any()).
+					Do(func(req http.Request) {
+						Expect(req.SignAction).To(BeTrue())
+					}).
 					Return(http.Result[loginResult]{}, errors.New(""))
 			})
 

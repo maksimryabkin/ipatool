@@ -193,6 +193,7 @@ func (t *appstore) loginRequest(email, password, authCode, guid, endpoint string
 		Method:         http.MethodPOST,
 		URL:            authenticateURL(endpoint),
 		ResponseFormat: http.ResponseFormatXML,
+		SignAction:     true,
 		Headers: map[string]string{
 			"Content-Type": "application/x-www-form-urlencoded",
 		},

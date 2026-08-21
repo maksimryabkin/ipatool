@@ -22,6 +22,9 @@
 - Supported operating system (Windows, Linux or macOS).
 - Apple ID set up to use the App Store.
 
+App Store authentication currently requires macOS with cgo enabled because
+Apple requires a platform-provided SAP action signature for the login request.
+
 ## Installation
 
 ### Manual

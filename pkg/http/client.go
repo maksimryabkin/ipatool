@@ -2,7 +2,9 @@ package http
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,10 +35,14 @@ type Client[R interface{}] interface {
 type client[R interface{}] struct {
 	internalClient http.Client
 	cookieJar      CookieJar
+	actionSigner   ActionSigner
 }
 
+type ActionSigner func(data []byte) ([]byte, error)
+
 type Args struct {
-	CookieJar CookieJar
+	CookieJar    CookieJar
+	ActionSigner ActionSigner
 }
 
 // UnexpectedResponseError preserves the HTTP status when Apple returns an
@@ -85,7 +91,8 @@ func NewClient[R interface{}](args Args) Client[R] {
 			},
 			Transport: &AddHeaderTransport{http.DefaultTransport},
 		},
-		cookieJar: args.CookieJar,
+		cookieJar:    args.CookieJar,
+		actionSigner: args.ActionSigner,
 	}
 }
 
@@ -109,6 +116,19 @@ func (c *client[R]) Send(req Request) (Result[R], error) {
 
 	for key, val := range req.Headers {
 		request.Header.Set(key, val)
+	}
+
+	if req.SignAction {
+		if c.actionSigner == nil {
+			return Result[R]{}, errors.New("failed to sign Apple action: signer is not configured")
+		}
+
+		signature, err := c.actionSigner(data)
+		if err != nil {
+			return Result[R]{}, fmt.Errorf("failed to sign Apple action: %w", err)
+		}
+
+		request.Header.Set(HeaderAppleActionSignature, base64.StdEncoding.EncodeToString(signature))
 	}
 
 	res, err := c.internalClient.Do(request)

@@ -3,6 +3,7 @@ package appstore
 import (
 	"github.com/majd/ipatool/v2/pkg/http"
 	"github.com/majd/ipatool/v2/pkg/keychain"
+	"github.com/majd/ipatool/v2/pkg/mescal"
 	"github.com/majd/ipatool/v2/pkg/util/machine"
 	"github.com/majd/ipatool/v2/pkg/util/operatingsystem"
 )
@@ -55,7 +56,8 @@ type Args struct {
 
 func NewAppStore(args Args) AppStore {
 	clientArgs := http.Args{
-		CookieJar: args.CookieJar,
+		CookieJar:    args.CookieJar,
+		ActionSigner: mescal.Sign,
 	}
 
 	return &appstore{
