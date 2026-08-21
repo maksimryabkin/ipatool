@@ -1,190 +1,108 @@
-# IPATool
+# ipatool-sapfix
 
-[![Release](https://img.shields.io/github/release/majd/ipatool.svg?label=Release)](https://GitHub.com/majd/ipatool/releases/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/majd/ipatool/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/maksimryabkin/ipatool-sapfix?include_prereleases&label=release)](https://github.com/maksimryabkin/ipatool-sapfix/releases)
+[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-`ipatool` is a command line tool that allows you to search for iOS apps on the [App Store](https://apps.apple.com) and download a copy of the app package, known as an _ipa_ file.
+A macOS-focused community build of [`ipatool`](https://github.com/majd/ipatool)
+that restores Apple App Store authentication after login requests started failing
+with:
 
-![Demo](./resources/demo.gif)
+```text
+request failed: unexpected response from Apple (HTTP 403): empty or non-plist body
+```
 
-- [Requirements](#requirements)
-- [Installation](#installation)
-  - [Manual](#manual)
-  - [Package Manager (macOS)](#package-manager-macos)
-- [Usage](#usage)
-- [Compiling](#compiling)
-- [License](#license)
-- [Releases](https://github.com/majd/ipatool/releases)
-- [FAQ](https://github.com/majd/ipatool/wiki/FAQ)
+The fix adds Apple's required SAP action signature
+(`X-Apple-ActionSignature`) through the macOS CommerceKit service. It also keeps
+passwords and two-factor authentication codes out of verbose logs.
 
-## Requirements
+This is an unofficial community project. It is not affiliated with Apple or the
+upstream `ipatool` maintainers.
 
-- Supported operating system (Windows, Linux or macOS).
-- Apple ID set up to use the App Store.
+## Download
 
-App Store authentication currently requires macOS with cgo enabled because
-Apple requires a platform-provided SAP action signature for the login request.
+Download the current prerelease from the
+[Releases page](https://github.com/maksimryabkin/ipatool-sapfix/releases/tag/2.3.2-sapfix.1).
 
-## Installation
+| Mac | `uname -m` | Archive |
+| --- | --- | --- |
+| Apple Silicon | `arm64` | `ipatool-2.3.2-sapfix.1-macos-arm64.tar.gz` |
+| Intel | `x86_64` | `ipatool-2.3.2-sapfix.1-macos-amd64.tar.gz` |
 
-### Manual
+Each archive has a matching `.sha256sum` file attached to the release.
 
-You can grab the latest version of `ipatool` from [GitHub releases](https://github.com/majd/ipatool/releases).
+## Install
 
-### Package Manager (macOS)
-
-You can install `ipatool` using [Homebrew](https://brew.sh).
+Apple Silicon example:
 
 ```shell
-$ brew install ipatool
+shasum -a 256 -c ipatool-2.3.2-sapfix.1-macos-arm64.tar.gz.sha256sum
+tar -xzf ipatool-2.3.2-sapfix.1-macos-arm64.tar.gz
+sudo install -m 0755 \
+  bin/ipatool-2.3.2-sapfix.1-macos-arm64 \
+  /usr/local/bin/ipatool
+ipatool --version
 ```
 
-## Usage
+For an Intel Mac, replace `arm64` with `amd64` in the archive and binary names.
 
-To authenticate with the App Store, use the `auth` command.
-
-```
-Authenticate with the App Store
-
-Usage:
-  ipatool auth [command]
-
-Available Commands:
-  info        Show current account info
-  login       Login to the App Store
-  revoke      Revoke your App Store credentials
-
-Flags:
-  -h, --help   help for auth
-
-Global Flags:
-      --format format     sets output format for command; can be 'text', 'json' (default text)
-      --non-interactive   run in non-interactive session
-      --verbose           enables verbose logs
-
-Use "ipatool auth [command] --help" for more information about a command.
-```
-
-To search for apps on the App Store, use the `search` command.
-
-```
-Search for iOS and tvOS apps available on the App Store
-
-Usage:
-  ipatool search <term> [flags]
-
-Flags:
-  -h, --help              help for search
-  -l, --limit int         maximum amount of search results to retrieve (default 5)
-      --platform string   Platform to search: iphone, ipad, or appletv
-
-Global Flags:
-      --format format     sets output format for command; can be 'text', 'json' (default text)
-      --non-interactive   run in non-interactive session
-      --verbose           enables verbose logs
-```
-
-To obtain a license for an app, use the `purchase` command.
-
-```
-Obtain a license for the app from the App Store
-
-Usage:
-  ipatool purchase [flags]
-
-Flags:
-  -b, --bundle-identifier string   Bundle identifier of the target iOS app (required)
-  -h, --help                       help for purchase
-
-Global Flags:
-      --format format     sets output format for command; can be 'text', 'json' (default text)
-      --non-interactive   run in non-interactive session
-      --verbose           enables verbose logs
-```
-
-To obtain a list of availble app versions to download, use the `list-versions` command.
-
-```
-List the available versions of an iOS app
-
-Usage:
-  ipatool list-versions [flags]
-
-Flags:
-  -i, --app-id int                 ID of the target iOS app (required)
-  -b, --bundle-identifier string   The bundle identifier of the target iOS app (overrides the app ID)
-  -h, --help                       help for list-versions
-
-Global Flags:
-      --format format                sets output format for command; can be 'text', 'json' (default text)
-      --keychain-passphrase string   passphrase for unlocking keychain
-      --non-interactive              run in non-interactive session
-      --verbose                      enables verbose logs
-```
-
-To download a copy of the ipa file, use the `download` command.
-
-```
-Download (encrypted) iOS and tvOS app packages from the App Store
-
-Usage:
-  ipatool download [flags]
-
-Flags:
-  -i, --app-id int                   ID of the target iOS app (required)
-  -b, --bundle-identifier string     The bundle identifier of the target iOS app (overrides the app ID)
-      --external-version-id string   External version identifier of the target iOS app (defaults to latest version when not specified)
-  -h, --help                         help for download
-  -o, --output string                The destination path of the downloaded app package
-      --platform string              Platform to download for: iphone, ipad, or appletv
-      --purchase                     Obtain a license for the app if needed
-
-Global Flags:
-      --format format                sets output format for command; can be 'text', 'json' (default text)
-      --keychain-passphrase string   passphrase for unlocking keychain
-      --non-interactive              run in non-interactive session
-      --verbose                      enables verbose logs
-```
-
-To resolve an external version identifier, returned by the `list-versions` command, use the `get-version-metadata` command.
-
-```
-Retrieves the metadata for a specific version of an app
-
-Usage:
-  ipatool get-version-metadata [flags]
-
-Flags:
-  -i, --app-id int                   ID of the target iOS app (required)
-  -b, --bundle-identifier string     The bundle identifier of the target iOS app (overrides the app ID)
-      --external-version-id string   External version identifier of the target iOS app (required)
-  -h, --help                         help for get-version-metadata
-
-Global Flags:
-      --format format                sets output format for command; can be 'text', 'json' (default text)
-      --keychain-passphrase string   passphrase for unlocking keychain
-      --non-interactive              run in non-interactive session
-      --verbose                      enables verbose logs
-```
-
-**Note:** the tool runs in interactive mode by default. Use the `--non-interactive` flag
-if running in an automated environment.
-
-## Compiling
-
-The tool can be compiled using the Go toolchain.
+If macOS reports that the downloaded binary cannot be opened, verify the
+checksum first and then remove only its quarantine attribute:
 
 ```shell
-$ go build -o ipatool
+xattr -d com.apple.quarantine bin/ipatool-2.3.2-sapfix.1-macos-arm64
 ```
 
-Unit tests can be executed with the following commands.
+## Use
+
+Log in interactively so the password is read from the prompt rather than from
+the shell command line:
 
 ```shell
-$ go generate github.com/majd/ipatool/...
-$ go test -v github.com/majd/ipatool/...
+ipatool auth login --email "you@example.com"
 ```
 
-## License
+Then search for, acquire, and download an app:
 
-IPATool is released under the [MIT license](https://github.com/majd/ipatool/blob/main/LICENSE).
+```shell
+ipatool search "Example App"
+ipatool purchase --bundle-identifier com.example.app
+ipatool download --bundle-identifier com.example.app \
+  --output ExampleApp.ipa
+```
+
+Run `ipatool --help` or `ipatool <command> --help` for all available options.
+
+## Requirements and limitations
+
+- App Store authentication in this build requires macOS with cgo enabled.
+- Release binaries are provided for Apple Silicon and Intel Macs.
+- The App Store protocol is private and can change without notice.
+- Downloaded App Store packages remain encrypted and are tied to the Apple ID
+  that acquired them.
+- You are responsible for following Apple's terms and applicable law.
+
+## Build from source
+
+Install a recent Go toolchain and the Xcode command line tools, then run:
+
+```shell
+git clone https://github.com/maksimryabkin/ipatool-sapfix.git
+cd ipatool-sapfix
+CGO_ENABLED=1 go build -trimpath -o ipatool .
+./ipatool --version
+```
+
+## Security and privacy
+
+The repository and release artifacts contain no Apple ID, password, two-factor
+code, session token, or local build path. GitHub secret scanning and push
+protection are enabled for the public repository.
+
+Do not publish raw authentication logs. If you report a bug, redact email
+addresses, tokens, cookies, DSIDs, passwords, and two-factor codes first.
+
+## Credits and license
+
+Based on [`majd/ipatool`](https://github.com/majd/ipatool) and distributed under
+the [MIT License](LICENSE). The original copyright and license notice are
+preserved.
